@@ -1,6 +1,7 @@
 #include <atomic>
 
 #define N 4
+#define MAX_FAILURES 10 
 
 struct Element {
     int e;
@@ -10,7 +11,7 @@ struct Element {
 struct State {
     int pending{1};
     int id{63};
-}
+};
     
 
 // Pending represents whether the push or pop is uptack or tack. 1 means uptack, 0 means tack.

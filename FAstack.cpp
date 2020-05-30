@@ -26,7 +26,7 @@ Segment * init_segment(int id){
 	return sg;
 }
 
-Cell init_cell(){
+Cell init_cell() {
 	Cell c;
 	Element e;
 	c.elem = e;
@@ -92,14 +92,16 @@ void push(Handle* h, Element x) {
     for(int p = 0; p < MAX_FAILURES; p++) {
         //T might have to be atomic
         int i = FAA(&s->T, 1);
-        c = find_cell(&h->top.load(std::memory_order_relaxed, i);
+        Cell c = find_cell(&h->top.load(std::memory_order_relaxed, i);
         //wtf is uptick
-        if(std::atomic_compare_exchange_strong_explicit(&c->elem, uptick, x)
+        if(std::atomic_compare_exchange_strong_explicit(&c->elem, uptick, x) {
             flag = true;
             break;
+        }
     }
-    if(!flag) 
+    if(!flag)  {
         wf_push(h, x, i);
+    }
     //wtf is tick timestamp
     h->time_stamp = get_timestamp(tick);
     h->top = NULL;
@@ -139,11 +141,6 @@ void wf_push(Handle* h, Element x, int push_id) {
     find_cell(&h->top, i);  
     c->elem = x;
 }
-
-
-}
-
-
 
 
 
