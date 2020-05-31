@@ -13,19 +13,28 @@ PopReq* tickPop;
 
 //Element* uptickE;
 Element uptickE;
-Element* tickE;
+Element tickE;
+Element emptyE;
 
 int uptickTime = -1;
 int tickTime = -2;
 
 Stack* s;
-int pc = 64; 
+std::atomic<int> pc; 
 //CAS(&c->push, &uptickPR, r);
 //CAS(&c->elem, &uptickE, x); 
 
 
 int get_timestamp(){
     return std::time(0);    
+}
+
+bool equal_states(State s1, State s2){
+	return s1.id == s2.id && s1.pending == s2.pending;
+}
+
+bool equal_elements(Element e1, Element e2){
+	return e1.e == e2.e;
 }
 
 Segment* init_segment(int id){
@@ -113,9 +122,6 @@ Cell* find_cell(Segment **sp, int cell_id){
     return &sg->cells[cell_id % N]; 
 }
 
-bool equal_states(State s1, State s2){
-	return s1.id == s2.id && s1.pending == s2.pending;
-}
 
 
 void wf_push(Handle* h, Element x, int push_id) {
@@ -189,12 +195,139 @@ void push(Handle* h, Element x) {
     h->top = NULL;
 }
 
+void help_pop(Handle * h, Handle * helpee){
+	PopReq * r = &helpee->pop.req;
+	State s = r->state.load(std::memory_order_acquire);
+	if (!s.pending) {
+		return;
+	}
+	int idx = r->idx;
+	Segment * sp = helpee->sp;
+	h->time_stamp = helpee->time_stamp;
+	//TODO: Look into this for loop since it was worded incorrectly.
+	for (int i = idx % N; sp != NULL && i != N-1; sp = sp->prev){
+		if (!equal_states(r->state,s)){
+			return;
+		}
+		while (i >= 0){
+			Cell * c = &sp->cells[i];
+			int cid = sp->id*N + i;
+			Element v = help_push(h,c,cid);
+			if (!equal_elements(v,tickE) && (c->pop.compare_exchange_strong(uptickPop,r,std::memory_order_release, std::memory_order_relaxed) || c->pop == r)){
+				State wr = {0,cid};
+				r->state.compare_exchange_strong(s, wr, std::memory_order_release, std::memory_order_relaxed);
+				return;
+			} else {
+				if (equal_elements(v, tickE) && c->pop.compare_exchange_strong(uptickPop, tickPop, std::memory_order_release, std::memory_order_relaxed)){
+					int counter = sp->counter.fetch_add(1, std::memory_order_acquire);
+					if (counter == N-1){
+						remove(h,sp);
+					}
+				}
+			}
+			i--;
+		}
+	}
+	if (equal_states(r->state,s)){
+		State w = {0,0};
+		r->state.compare_exchange_strong(s,w, std::memory_order_release, std::memory_order_relaxed);
+	}
+}
+
+Element wf_pop(Handle * h, int cid){
+	PopReq * r = &h->pop.req;
+	r->idx = cid;
+	r ->state = {1, pc.fetch_add(1, std::memory_order_relaxed)};
+	help_pop(h,h);
+	int i = r->state.load(std::memory_order_acquire).id;
+	if (i == 0){
+		// Empty means we return the "empty element"
+		return emptyE;
+	}
+	Cell * c = find_cell(&h->sp, i);
+	Element v = c->elem;
+	c->pop.store(tickPop, std::memory_order_acquire);
+	int counter = h->sp->counter.fetch_add(1, std::memory_order_relaxed);
+	if (counter == N-1){
+		remove(h,h->sp);
+	}
+	return v;
+}
+
+Element pop(Handle * h){
+	h->time_stamp = get_timestamp();
+	h->top = s->top.load(std::memory_order_acquire);
+	int t = s->T.load(std::memory_order_acquire);
+	find_cell(&h->top,t);
+	Segment * sp = h->top;
+	Element v;
+	int idx = 0;
+	if (t % N != 0){
+		idx = t-1;
+	} else {
+		sp = sp->prev;
+		if (sp != NULL){
+			idx = sp->id * N + N-1;
+		}
+	}
+	int p = 0;
+	while (sp != NULL) {
+		if (sp->id < idx/N){
+			if (sp->id < idx/N){
+				idx = sp->id*N +N-1;
+			}
+			if (p == MAX_FAILURES){
+				goto FLAG1;
+			}
+			int i = idx % N;
+			Cell * c = &sp->cells[i];
+			int offset = c->offset.fetch_add(1, std::memory_order_acquire);
+			idx -= offset;
+			if (idx < 1){
+				v = emptyE;
+				goto FLAG3;
+			}
+			p++;
+			if (offset != 0 ){
+				continue;
+			}
+			v = help_push(h, c, idx);
+			if (c->pop.compare_exchange_strong(uptickPop,tickPop)){
+				int counter = sp->counter.fetch_add(1, std::memory_order_acquire);				
+				if (counter == N-1){
+					remove(h,sp);
+				}
+				if (!equal_elements(v,tickE)) {
+					goto FLAG2;
+				}
+			}
+			idx -= c->offset.fetch_add(1, std::memory_order_acquire);
+		} else {
+			sp = sp->prev;
+		}
+	}
+	if (sp == NULL){
+		v = emptyE;
+		goto FLAG3;
+	}
+
+	FLAG1:h->sp = sp;
+		v = wf_pop(h,idx);
+	FLAG2:if (!equal_elements(v,emptyE)){
+			help_pop(h,h->pop.peer);
+			h->pop.peer = h->pop.peer->next;
+		  }
+	FLAG3:h->time_stamp = tickTime;
+		  h->top = NULL;
+		  return v;
+}
 
 
 
 int main() {
     //mallocs
     //s = (Stack*) malloc(sizeof *s);
+	pc.store(64,std::memory_order_acquire);
     uptickPush = (PushReq*) malloc(sizeof *uptickPush);
     tickPush = (PushReq*) malloc(sizeof *tickPush);
 
@@ -202,7 +335,7 @@ int main() {
     tickPop = (PopReq*) malloc(sizeof *tickPop);
 
     //uptickE = (Element*) malloc(sizeof *uptickE);
-    tickE = (Element*) malloc(sizeof *tickE);
+    //tickE = (Element*) malloc(sizeof *tickE);
 
     //value inits
     s->T = ATOMIC_VAR_INIT(64);
@@ -214,7 +347,8 @@ int main() {
     tickPop->state.store(tick);
     //uptickE->e = -1;
     uptickE.e = -1;
-    tickE->e = -2;
-    Stack* s = new Stack();
+    tickE.e = -2;
+ 	emptyE.e = -3;
+	Stack* s = new Stack();
 
 }

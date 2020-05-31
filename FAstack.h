@@ -41,7 +41,7 @@ struct Cell {
     std::atomic<PushReq*> push;
     std::atomic<PopReq*> pop;
 
-    int offset{64};
+	std::atomic<int> offset{64};
 };
 
 struct Segment {
