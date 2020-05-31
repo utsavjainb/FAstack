@@ -133,13 +133,18 @@ void wf_push(Handle* h, Element x, int push_id) {
         int i = std::atomic_fetch_add(&s->T, 1);
         c = find_cell(&sp, i);
         if(c->push.compare_exchange_strong(uptickPush, r) || c->push == r) {
+            /*
             State* checkstate;
             checkstate->pending = 1;
             checkstate->id = push_id;
             State* newstate;
             newstate->pending = 0;
             newstate->id = i;
-            if (r->state.compare_exchange_strong(*checkstate, *newstate, std::memory_order_relaxed, std::memory_order_relaxed) || equal_states(r->state,*newstate)) {
+            */
+            State checkstate = {1, push_id};
+            State newstate = {0, i};
+            //if (r->state.compare_exchange_strong(*checkstate, *newstate, std::memory_order_relaxed, std::memory_order_relaxed) || equal_states(r->state,*newstate)) {
+            if (r->state.compare_exchange_strong(checkstate, newstate, std::memory_order_relaxed, std::memory_order_relaxed) || equal_states(r->state, newstate)) {
                 break;
             }
         }
