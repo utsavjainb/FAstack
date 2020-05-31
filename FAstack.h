@@ -46,7 +46,8 @@ struct Cell {
 
 struct Segment {
     int id{64};
-    int counter{64};
+    //int counter{64};
+    std::atomic<int> counter{64};
     int time_stamp{64};
     bool retired;
 	std::atomic<Segment*> prev;

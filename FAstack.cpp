@@ -121,12 +121,16 @@ bool equal_states(State s1, State s2){
 void wf_push(Handle* h, Element x, int push_id) {
     PushReq* r = &h->push.req;
     r->elem = x;
-    r->state.pending = 1;
-    r->state.id = push_id;
+    //not sure if this is correct way, have to construct a State and then store atomically
+    State tempstate = {1, push_id};
+    //State tempstate{.id = push_id};
+    r->state.store(tempstate, std::memory_order_relaxed);
+    //r->state.pending = 1;
+    //r->state.id = push_id;
     Segment* sp = h->top; 
     Cell* c;
     do {
-        int i = FAA(&s->T, 1);
+        int i = std::atomic_fetch_add(&s->T, 1);
         c = find_cell(&sp, i);
         if(c->push.compare_exchange_strong(uptickPush, r) || c->push == r) {
             State* checkstate;
@@ -143,14 +147,17 @@ void wf_push(Handle* h, Element x, int push_id) {
             // pop pointer in Cell must be atomic
             //if (std::atomic_compare_exchange_strong_explicit(&c->pop, &uptickPop, tickPop)){
             if (c->pop.compare_exchange_strong(uptickPop, tickPop)){
-                int counter = FAA(sp->counter, 1);
+                //int counter = std::atomic_fetch_add(sp->counter, 1);
+                int counter = sp->counter.fetch_add(1, std::memory_order_relaxed);
                 if (counter == N - 1) {
                     remove(h, sp);
                 }
             }
         }
-    } while(r->state.pending != 0);
-    int i = r->state.id;
+    //} while(r->state.pending != 0);
+    //UNSURE: does this have to be atomic?
+    } while(r->state.load().pending != 0);
+    int i = r->state.load().id;
     find_cell(&h->top, i);  
     c->elem = x;
 }
@@ -194,11 +201,12 @@ int main() {
 
     //value inits
     s->T = ATOMIC_VAR_INIT(64);
-    uptickPush->state.id = -1;
-    uptickPush->state.id = -1;
-    tickPush->state.id = -2;
-    uptickPop->state.id = -1;
-    tickPop->state.id = -2;
+    State utick = {1, -1};   
+    State tick = {1, -1};   
+    uptickPush->state.store(utick);
+    tickPush->state.store(tick);
+    uptickPop->state.store(utick);
+    tickPop->state.store(tick);
     //uptickE->e = -1;
     uptickE.e = -1;
     tickE->e = -2;
