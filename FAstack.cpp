@@ -5,6 +5,8 @@
 #include "FAstack.h"
 #include <ctime>                                                                                                                    
 
+#define NUM_THREADS 4
+
 PushReq* uptickPush;
 PushReq* tickPush;
 
@@ -120,6 +122,92 @@ Cell* find_cell(Segment **sp, int cell_id){
     }   
     *sp = sg; 
     return &sg->cells[cell_id % N]; 
+}
+
+void cleanup(Handle *h) {
+    Segment *prev = NULL;
+    //for(Segment *cur = h->free_list.load(); cur != NULL; cur = cur->next.load()) {
+    Segment *cur = h->free_list.load();
+    //for(Segment *cur = h->free_list.load(); cur != NULL; cur = cur->next.load()) {
+    while(cur != NULL) { 
+        bool freemark = true;
+        for(Handle* ph = h->push.peer; ph != NULL; ph = ph->next) {
+            if (cur == s->top || ph->time_stamp <= cur->time_stamp || ph->top == cur ) {
+                freemark = false;
+                break;
+            }
+        }
+        if (freemark) {
+            if (prev != NULL) {
+                prev->next.store(cur->next);
+                cur->next.load()->prev = prev;
+                //need to fix this line, cannot free and then iterate to cur next
+                Segment* ncur = cur->next.load();
+                prev = cur;
+                free(cur);
+                cur = ncur;
+                continue;
+            } else {
+                h->free_list.store(cur->next); 
+                cur->next = NULL;
+            }
+        }
+        prev = cur;
+        cur = cur->next.load();
+    }
+
+}
+
+void remove(Handle *h , Segment *sp) {
+    sp->retired = true;
+    int i = 1;
+    Segment* next = sp->real_next.load(std::memory_order_acquire);
+    if(next == NULL) {
+        next = sp->next;
+    }
+    Segment* rnext;
+    while(i++ < NUM_THREADS && next->retired) {
+        rnext = next->real_next.load(std::memory_order_acquire);
+        if( rnext == NULL) {
+            next = next->next;
+        } else {
+            next = rnext; 
+        }
+    }
+    i = 1;
+    Segment* prev = sp->prev.load(std::memory_order_acquire);
+    Segment* nprev;
+    Segment* pnext; 
+    while(i++ < NUM_THREADS && prev != NULL && prev->retired) {
+        prev = prev->prev;
+    }
+    nprev = next->prev;
+    
+    while(nprev != NULL && (prev == NULL || nprev->id > prev->id) && !next->prev.compare_exchange_strong(nprev, prev) ) {
+        nprev = next->prev; 
+    }
+    if (prev == NULL) {
+        goto RFLAG;
+    }
+    pnext = prev->real_next.load(std::memory_order_acquire);
+    while((pnext == NULL || pnext->id < next->id) && (!prev->real_next.compare_exchange_strong(pnext, next))) {
+        pnext = prev->real_next;
+    }
+
+    RFLAG:sp->time_stamp = get_timestamp();
+    //std::atomic<Segment*> rover = h->free_list;  
+    Segment* rover = h->free_list.load(std::memory_order_acquire);  
+    while(rover != NULL) {
+        Segment* nrover =  rover->next.load(std::memory_order_acquire);
+        if (nrover == NULL) {
+            rover->next.store(sp, std::memory_order_release);
+            sp->prev = rover;
+            break;
+        }
+        rover = nrover;
+    }
+    //cleanup(h); 
+
 }
 
 
@@ -369,9 +457,11 @@ Element pop(Handle * h){
 
 
 
+
+
 int main() {
     //mallocs
-    //s = (Stack*) malloc(sizeof *s);
+    s = (Stack*) malloc(sizeof *s);
 	pc.store(64,std::memory_order_acquire);
     uptickPush = (PushReq*) malloc(sizeof *uptickPush);
     tickPush = (PushReq*) malloc(sizeof *tickPush);
