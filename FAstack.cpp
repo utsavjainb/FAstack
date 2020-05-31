@@ -123,6 +123,51 @@ Cell* find_cell(Segment **sp, int cell_id){
 }
 
 
+Element help_push(Handle *h, Cell* c, int i) {
+    if (c->elem.compare_exchange_strong(uptickE, tickE) && !equal_elements(c->elem, tickE)) {
+        return c->elem;
+    }
+    Handle* p;
+    PushReq* r;
+    State s;
+    if (c->push == uptickPush) {
+        p = h->push.peer;
+        r = &p->push.req; 
+        s = r->state.load(std::memory_order_acquire);
+        if ( h->push.help_id != 0 and h->push.help_id != s.id) {
+            h->push.help_id = 0;
+            h->push.peer = p->next;
+            p = h->push.peer;
+            r = &p->push.req;
+            s = r->state;
+        }
+        
+        if (s.pending && s.id <= i) {
+            c->push.compare_exchange_strong(uptickPush, r, std::memory_order_release, std::memory_order_relaxed);
+        }
+        if (s.pending and c->push != r) {
+            h->push.help_id = s.id;
+        } else {
+            h->push.help_id = 0;
+            h->push.peer = p->next;
+        }
+        c->push.compare_exchange_strong(uptickPush, tickPush);
+    }
+    if(c->push = tickPush) {
+        return tickE;
+    }
+    r = c->push;
+    s = r->state.load(std::memory_order_acquire);
+    Element v = r->elem;
+    State wr = {1, s.id};
+    State qr = {0, i};
+    if (s.id <= i and r->state.compare_exchange_strong(wr, qr) || equal_states(r->state, qr)) {
+        c->elem = v;
+    }
+    return c->elem;
+}
+    
+
 
 void wf_push(Handle* h, Element x, int push_id) {
     PushReq* r = &h->push.req;
