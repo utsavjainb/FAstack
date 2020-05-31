@@ -13,36 +13,34 @@ struct State {
     int id{63};
 };
     
-
 // Pending represents whether the push or pop is uptack or tack. 1 means uptack, 0 means tack.
+
+/*
+struct {
+    int pending{1};
+    int id{63};
+} state;
+*/
 
 struct PushReq {
     Element elem;
-    /*
-    struct {
-        int pending{1};
-        int id{63};
-    } state;
-    */
-    State state;
-        
+	std::atomic<State> state;
 };
 
 struct PopReq {
     int idx{64};
-    /*
-    struct {
-        int pending{1};
-        int id{63};
-    } state;
-    */
-    State state;
+	std::atomic<State> state;
 };
+
+
 
 struct Cell {
     std::atomic<Element> elem;
-    PushReq *push;
-    PopReq *pop;
+    //PushReq *push;
+    //PopReq *pop;
+    std::atomic<PushReq*> push;
+    std::atomic<PopReq*> pop;
+
     int offset{64};
 };
 
@@ -81,5 +79,7 @@ struct Handle {
 
 struct Stack {
 	std::atomic<Segment*> top;   
-    int T{64};
+    //int T{64};
+    //std::atomic<int> T{64};
+    std::atomic<int> T{ATOMIC_VAR_INIT(64)};
 };
