@@ -1,7 +1,8 @@
 #include <atomic>
 
-#define N 4
-#define MAX_FAILURES 10 
+//#define N 10 
+//#define MAX_FAILURES 10 
+//int N = 10;
 
 struct Element {
     int e;
@@ -54,7 +55,7 @@ struct Segment {
     std::atomic<Segment*> next;
     std::atomic<Segment*> real_next; 
     std::atomic<Segment*> free_next;
-    Cell cells[N];
+    Cell* cells[10];
 };
 
 
@@ -62,7 +63,7 @@ struct Segment {
 struct Handle {
     Segment* top;
     Segment* sp; 
-    Segment* free_list;
+    std::atomic<Segment*> free_list;
     Handle* next;
     struct {
         int help_id{64};

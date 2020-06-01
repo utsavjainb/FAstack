@@ -5,7 +5,12 @@
 #include "FAstack.h"
 #include <ctime>                                                                                                                    
 
-#define NUM_THREADS 4
+//#define NUM_THREADS 10 
+//#define N 10 
+//#define MAX_FAILURES 10 
+int NUM_THREADS = 10;
+int N = 10;
+int MAX_FAILURES = 10;
 
 PushReq* uptickPush;
 PushReq* tickPush;
@@ -13,7 +18,6 @@ PushReq* tickPush;
 PopReq* uptickPop;
 PopReq* tickPop;
 
-//Element* uptickE;
 Element uptickE;
 Element tickE;
 Element emptyE;
@@ -23,8 +27,6 @@ int tickTime = -2;
 
 Stack* s;
 std::atomic<int> pc; 
-//CAS(&c->push, &uptickPR, r);
-//CAS(&c->elem, &uptickE, x); 
 
 
 int get_timestamp(){
@@ -40,7 +42,7 @@ bool equal_elements(Element e1, Element e2){
 }
 
 Segment* init_segment(int id){
-	Segment * sg;
+	Segment * sg = (Segment*) malloc(sizeof(Segment));
 	sg->id = id;
 	sg->counter = 0;
 	//sg->time_stamp = get_timestamp();
@@ -81,15 +83,16 @@ Segment* new_segment(int id) {
         sg->cells[i] = init_cell(); 
         sg->cells[i] = c; 
         */
-        sg->cells[i].elem.store(uptickE, std::memory_order_release);
-        sg->cells[i].push = uptickPush;
-        sg->cells[i].pop = uptickPop;
+        sg->cells[i] = (Cell*) malloc(sizeof(Cell));
+        sg->cells[i]->elem.store(uptickE, std::memory_order_release);
+        sg->cells[i]->push = uptickPush;
+        sg->cells[i]->pop = uptickPop;
     }   
     return sg; 
 }
 
 void stack_init(){
-    s = new Stack();
+    s = (Stack*) malloc(sizeof *s);
     Segment* top = new_segment(0);
     Segment* next = new_segment(1);
     top->next.store(next,std::memory_order_relaxed);
@@ -97,6 +100,7 @@ void stack_init(){
     s->top.store(top,std::memory_order_relaxed);
     s->T = 1;
     pc = 1;
+	//pc.store(64,std::memory_order_acquire);
 }
 
 Cell* find_cell(Segment **sp, int cell_id){
@@ -121,7 +125,8 @@ Cell* find_cell(Segment **sp, int cell_id){
         sg = next;
     }   
     *sp = sg; 
-    return &sg->cells[cell_id % N]; 
+    //return &sg->cells[cell_id % N]; 
+    return sg->cells[cell_id % N]; 
 }
 
 void cleanup(Handle *h) {
@@ -212,7 +217,7 @@ void remove(Handle *h , Segment *sp) {
 
 
 Element help_push(Handle *h, Cell* c, int i) {
-    if (c->elem.compare_exchange_strong(uptickE, tickE) && !equal_elements(c->elem, tickE)) {
+    if (!c->elem.compare_exchange_strong(uptickE, tickE) && !equal_elements(c->elem, tickE)) {
         return c->elem;
     }
     Handle* p;
@@ -306,6 +311,7 @@ void wf_push(Handle* h, Element x, int push_id) {
     c->elem = x;
 }
 
+//PUSH
 void push(Handle* h, Element x) {
     h->time_stamp = get_timestamp();
     h->top = s->top.load(std::memory_order_relaxed);
@@ -343,7 +349,7 @@ void help_pop(Handle * h, Handle * helpee){
 			return;
 		}
 		while (i >= 0){
-			Cell * c = &sp->cells[i];
+			Cell * c = sp->cells[i];
 			int cid = sp->id*N + i;
 			Element v = help_push(h,c,cid);
 			if (!equal_elements(v,tickE) && (c->pop.compare_exchange_strong(uptickPop,r,std::memory_order_release, std::memory_order_relaxed) || c->pop == r)){
@@ -387,14 +393,15 @@ Element wf_pop(Handle * h, int cid){
 	return v;
 }
 
+//POP
 Element pop(Handle * h){
 	h->time_stamp = get_timestamp();
 	h->top = s->top.load(std::memory_order_acquire);
 	int t = s->T.load(std::memory_order_acquire);
 	find_cell(&h->top,t);
-	Segment * sp = h->top;
+	Segment* sp = h->top;
 	Element v;
-	int idx = 0;
+	int idx;
 	if (t % N != 0){
 		idx = t-1;
 	} else {
@@ -404,8 +411,9 @@ Element pop(Handle * h){
 		}
 	}
 	int p = 0;
+    
 	while (sp != NULL) {
-		if (sp->id < idx/N){
+		if (sp->id <= idx/N){
 			if (sp->id < idx/N){
 				idx = sp->id*N +N-1;
 			}
@@ -413,9 +421,10 @@ Element pop(Handle * h){
 				goto FLAG1;
 			}
 			int i = idx % N;
-			Cell * c = &sp->cells[i];
+			Cell * c = sp->cells[i];
 			int offset = c->offset.fetch_add(1, std::memory_order_acquire);
 			idx -= offset;
+            std::cout << "idx: " << idx << std::endl;
 			if (idx < 1){
 				v = emptyE;
 				goto FLAG3;
@@ -461,29 +470,28 @@ Element pop(Handle * h){
 
 int main() {
     //mallocs
-    s = (Stack*) malloc(sizeof *s);
-	pc.store(64,std::memory_order_acquire);
+
     uptickPush = (PushReq*) malloc(sizeof *uptickPush);
     tickPush = (PushReq*) malloc(sizeof *tickPush);
-
     uptickPop = (PopReq*) malloc(sizeof *uptickPop);
     tickPop = (PopReq*) malloc(sizeof *tickPop);
 
-    //uptickE = (Element*) malloc(sizeof *uptickE);
-    //tickE = (Element*) malloc(sizeof *tickE);
-
     //value inits
-    s->T = ATOMIC_VAR_INIT(64);
     State utick = {1, -1};   
     State tick = {1, -1};   
     uptickPush->state.store(utick);
     tickPush->state.store(tick);
     uptickPop->state.store(utick);
     tickPop->state.store(tick);
-    //uptickE->e = -1;
     uptickE.e = -1;
     tickE.e = -2;
- 	emptyE.e = -3;
-	Stack* s = new Stack();
+ 	emptyE.e = -6;
+    Element t1 = {5};
+
+    stack_init();    
+    Handle* hr = (Handle*) malloc(sizeof(Handle));
+    push(hr, t1);
+    Element t2 = pop(hr);
+    std::cout << t2.e << std::endl;
 
 }
