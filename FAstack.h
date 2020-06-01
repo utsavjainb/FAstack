@@ -14,14 +14,6 @@ struct State {
     int id{63};
 };
     
-// Pending represents whether the push or pop is uptack or tack. 1 means uptack, 0 means tack.
-
-/*
-struct {
-    int pending{1};
-    int id{63};
-} state;
-*/
 
 struct PushReq {
     Element elem;
@@ -111,9 +103,12 @@ class Handle{
     }
 }; 
 
+void alloc_peers(Handle *h){
+    h->push.peer = new Handle();
+    h->pop.peer = new Handle();
+}
+
 struct Stack {
 	std::atomic<Segment*> top;   
-    //int T{64};
-    //std::atomic<int> T{64};
     std::atomic<int> T{ATOMIC_VAR_INIT(64)};
 };

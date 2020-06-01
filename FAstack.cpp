@@ -490,13 +490,8 @@ int main() {
     Element t1 = {5};
 
     stack_init();    
-    //Handle* hr = (Handle*) malloc(sizeof(Handle));
     Handle* hr = new Handle();
-    hr->push.peer = new Handle();
-    hr->pop.peer = new Handle();
-    //hPush* hp = (hPush*) malloc(sizeof(hPush));
-    //hr->push = malloc(sizeof(hpush));
-    //hr->pop = (Handle->pop*) malloc(sizeof(Handle->pop);
+    alloc_peers(hr);
      
     push(hr, t1);
     Element t2 = pop(hr);
