@@ -1,4 +1,4 @@
 all:
-	g++ -std=c++14 FAstack.cpp  -g -o FAstack 
+	g++ -std=c++14 main.cpp  -g -o main 
 clean:
-	rm FAstack
+	rm main

@@ -6,7 +6,7 @@
 #include <ctime>                                                                                                                    
 
 int main() {
-
+    //inits
     uptickPush = (PushReq*) malloc(sizeof *uptickPush);
     tickPush = (PushReq*) malloc(sizeof *tickPush);
     uptickPop = (PopReq*) malloc(sizeof *uptickPop);
@@ -21,15 +21,24 @@ int main() {
     uptickE.e = -1;
     tickE.e = -2;
  	emptyE.e = -3;
+
+
+    stack_init();    
+    Handle* hr = new Handle();
+    alloc_peers(hr);
+
+    std::vector<Element> pushElems;
+    for(int i = 0;i < 5; i++) {
+        pushElems.push_back(Element{i});
+        //std::cout << pushElems.at(i) << std::endl;
+    }
+ 
     Element t1 = {1};
     Element t2 = {2};
     Element t3 = {3};
     Element t4 = {4};
     Element t5 = {5};
 
-    stack_init();    
-    Handle* hr = new Handle();
-    alloc_peers(hr);
      
     push(hr, t1);
     push(hr, t2);
