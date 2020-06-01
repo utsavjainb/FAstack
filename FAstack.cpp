@@ -211,7 +211,7 @@ void remove(Handle *h , Segment *sp) {
         }
         rover = nrover;
     }
-    //cleanup(h); 
+    cleanup(h); 
 
 }
 
@@ -334,8 +334,8 @@ void push(Handle* h, Element x) {
     h->top = NULL;
 }
 
-void help_pop(Handle * h, Handle * helpee){
-	PopReq * r = &helpee->pop.req;
+void help_pop(Handle* h, Handle* helpee){
+	PopReq* r = &helpee->pop.req;
 	State s = r->state.load(std::memory_order_acquire);
 	if (!s.pending) {
 		return;
@@ -401,7 +401,7 @@ Element pop(Handle * h){
 	find_cell(&h->top,t);
 	Segment* sp = h->top;
 	Element v;
-	int idx;
+	int idx = 0;
 	if (t % N != 0){
 		idx = t-1;
 	} else {
@@ -456,8 +456,9 @@ Element pop(Handle * h){
 	FLAG1:h->sp = sp;
 		v = wf_pop(h,idx);
 	FLAG2:if (!equal_elements(v,emptyE)){
-			help_pop(h,h->pop.peer);
+			help_pop(h, h->pop.peer);
 			h->pop.peer = h->pop.peer->next;
+            std::cout << "skipping help pop " << std::endl;
 		  }
 	FLAG3:h->time_stamp = tickTime;
 		  h->top = NULL;
@@ -489,7 +490,14 @@ int main() {
     Element t1 = {5};
 
     stack_init();    
-    Handle* hr = (Handle*) malloc(sizeof(Handle));
+    //Handle* hr = (Handle*) malloc(sizeof(Handle));
+    Handle* hr = new Handle();
+    hr->push.peer = new Handle();
+    hr->pop.peer = new Handle();
+    //hPush* hp = (hPush*) malloc(sizeof(hPush));
+    //hr->push = malloc(sizeof(hpush));
+    //hr->pop = (Handle->pop*) malloc(sizeof(Handle->pop);
+     
     push(hr, t1);
     Element t2 = pop(hr);
     std::cout << t2.e << std::endl;

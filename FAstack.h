@@ -58,8 +58,7 @@ struct Segment {
     Cell* cells[10];
 };
 
-
-
+/*
 struct Handle {
     Segment* top;
     Segment* sp; 
@@ -77,7 +76,40 @@ struct Handle {
     } pop;
     
     int time_stamp{64}; 
+    
 };
+*/
+
+
+class Handle{
+  public:
+    class hPush {
+      public:
+        int help_id;
+        PushReq req;
+        Handle* peer;
+        hPush() { 
+            help_id = 64;
+        }
+    };
+    class hPop {
+      public:
+        PopReq req;
+        Handle* peer;
+        hPop() {
+        }
+    };
+    Segment *top; 
+    Segment *sp; 
+    std::atomic<Segment*> free_list;
+    int time_stamp;
+    Handle* next;
+    hPush push;
+    hPop pop;
+    Handle() {
+        time_stamp = 64;    
+    }
+}; 
 
 struct Stack {
 	std::atomic<Segment*> top;   
