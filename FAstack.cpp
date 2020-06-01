@@ -329,6 +329,7 @@ void push(Handle* h, Element x) {
     if(!flag) {
         wf_push(h, x, i);
     }
+    std::cout << "pushed Element " << &x << ": " << x.e << std::endl;
     //h->time_stamp = get_timestamp(tick);
     h->time_stamp = tickTime;
     h->top = NULL;
@@ -424,7 +425,6 @@ Element pop(Handle * h){
 			Cell * c = sp->cells[i];
 			int offset = c->offset.fetch_add(1, std::memory_order_acquire);
 			idx -= offset;
-            std::cout << "idx: " << idx << std::endl;
 			if (idx < 1){
 				v = emptyE;
 				goto FLAG3;
@@ -458,10 +458,16 @@ Element pop(Handle * h){
 	FLAG2:if (!equal_elements(v,emptyE)){
 			help_pop(h, h->pop.peer);
 			h->pop.peer = h->pop.peer->next;
-            std::cout << "skipping help pop " << std::endl;
 		  }
 	FLAG3:h->time_stamp = tickTime;
 		  h->top = NULL;
+          if (v.e != -3) {
+              std::cout << "Popped:  " << v.e << std::endl;
+          } else {
+              std::cout << "Stack is empty: nothing to pop" << std::endl;
+
+          }          
+          alloc_peers(h);
 		  return v;
 }
 
@@ -470,14 +476,12 @@ Element pop(Handle * h){
 
 
 int main() {
-    //mallocs
 
     uptickPush = (PushReq*) malloc(sizeof *uptickPush);
     tickPush = (PushReq*) malloc(sizeof *tickPush);
     uptickPop = (PopReq*) malloc(sizeof *uptickPop);
     tickPop = (PopReq*) malloc(sizeof *tickPop);
 
-    //value inits
     State utick = {1, -1};   
     State tick = {1, -1};   
     uptickPush->state.store(utick);
@@ -486,15 +490,27 @@ int main() {
     tickPop->state.store(tick);
     uptickE.e = -1;
     tickE.e = -2;
- 	emptyE.e = -6;
-    Element t1 = {5};
+ 	emptyE.e = -3;
+    Element t1 = {1};
+    Element t2 = {2};
+    Element t3 = {3};
+    Element t4 = {4};
+    Element t5 = {5};
 
     stack_init();    
     Handle* hr = new Handle();
     alloc_peers(hr);
      
     push(hr, t1);
-    Element t2 = pop(hr);
-    std::cout << t2.e << std::endl;
+    push(hr, t2);
+    push(hr, t3);
+    push(hr, t4);
+    push(hr, t5);
+    Element t6 = pop(hr);
+    Element t7 = pop(hr);
+    Element t8 = pop(hr);
+    Element t9 = pop(hr);
+    Element t10 = pop(hr);
+    Element t11 = pop(hr);
 
 }
