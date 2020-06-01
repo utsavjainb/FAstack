@@ -8,30 +8,8 @@
 #include <ctime>                                                                                                                    
 
 
-void* thread_func(void* arg) {
-    int thID = (long) arg;
-    Handle* hr = new Handle();
-    alloc_peers(hr);
-
-    std::vector<Element> popElems;
-    std::cout << "pushing.. " << std::endl;
-    for(int i = 1; i <= 1000; i++) {
-        push(hr, Element{i}); 
-        std::cout << "Thread " << thID << " pushed " << i << std::endl;
-        sleep(0.3);
-    }
-
-    Element popped; 
-
-    /*
-    std::cout << "popping.. " << std::endl;
-    for(int i = 1; i <= 1000; i++) {
-        popped = pop(hr);
-        std::cout << "Thread " << thID << " popped " << i << std::endl;
-    }
-    std::cout << "done!" << std::endl;
-    */
-}
+#define NUMELEMS 1000
+#define NUMTHREADS 8 
 
 void* push_thread(void* arg) {
     int thID = (long) arg;
@@ -40,10 +18,10 @@ void* push_thread(void* arg) {
 
     std::vector<Element> popElems;
     std::cout << "pushing.. " << std::endl;
-    for(int i = 1; i <= 1000; i++) {
+    for(int i = 1; i <= NUMELEMS; i++) {
         push(hr, Element{i}); 
         std::cout << "Thread " << thID << " pushed " << i << std::endl;
-        sleep(0.3);
+        //sleep(0.3);
     }
 }
 
@@ -54,7 +32,7 @@ void* pop_thread(void* arg) {
 
     Element popped; 
     std::cout << "popping.. " << std::endl;
-    for(int i = 1; i <= 1000; i++) {
+    for(int i = 1; i <= NUMELEMS; i++) {
         popped = pop(hr);
         std::cout << "Thread " << thID << " popped " << i << std::endl;
     }
@@ -79,11 +57,13 @@ int main() {
  	emptyE.e = -3;
 
     stack_init();    
-    int nt = 3;
     int rc;
-    pthread_t  stackThreads[nt];
-    for (int i = 0; i < nt; i++) {
-        rc = pthread_create(&stackThreads[i], NULL, thread_func, (void*)i);
+    int rc2;
+    pthread_t  pushThreads[NUMTHREADS];
+    pthread_t  popThreads[NUMTHREADS];
+    
+    for (int i = 0; i < NUMTHREADS; i++) {
+        rc = pthread_create(&pushThreads[i], NULL, push_thread, (void*)i);
         if (rc) {
             printf("ERROR,  unable to create thread ");
             std::cout << rc << std::endl;
@@ -91,14 +71,32 @@ int main() {
         }   
     }   
 
-    for (int i = 0; i < nt; i++) {
-        rc = pthread_join(stackThreads[i], NULL);
+    for (int i = 0; i < NUMTHREADS; i++) {
+        rc = pthread_create(&popThreads[i], NULL, pop_thread, (void*)i);
         if (rc) {
             printf("ERROR,  unable to create thread ");
             std::cout << rc << std::endl;
             exit(-1);
         }   
     }   
+
+    
+    for (int i = 0; i < NUMTHREADS; i++) {
+        rc = pthread_join(pushThreads[i], NULL);
+        rc2 = pthread_join(popThreads[i], NULL);
+        if (rc) {
+            printf("ERROR,  unable to create thread ");
+            std::cout << rc << std::endl;
+            exit(-1);
+        }   
+        if (rc2) {
+            printf("ERROR,  unable to create thread ");
+            std::cout << rc << std::endl;
+            exit(-1);
+        }   
+    }   
+
+
     return 0;
 
 }

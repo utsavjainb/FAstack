@@ -9,21 +9,9 @@
 //#define N 10 
 //#define MAX_FAILURES 10 
 int NUM_THREADS = 10;
-int N = 4;
 int MAX_FAILURES = 10;
 
-PushReq* uptickPush;
-PushReq* tickPush;
 
-PopReq* uptickPop;
-PopReq* tickPop;
-
-Element uptickE;
-Element tickE;
-Element emptyE;
-
-int uptickTime = -1;
-int tickTime = -2;
 
 Stack* s;
 std::atomic<int> pc; 
@@ -41,40 +29,6 @@ bool equal_elements(Element e1, Element e2){
 	return e1.e == e2.e;
 }
 
-Segment* init_segment(int id){
-	Segment * sg = (Segment*) malloc(sizeof(Segment));
-	sg->id = id;
-	sg->counter = 0;
-	//sg->time_stamp = get_timestamp();
-	sg->time_stamp = uptickTime;
-	sg->retired = false;
-	sg->prev = NULL;
-	sg->next = NULL;
-	sg->real_next = NULL;
-	sg->free_next = NULL;
-	return sg;
-}
-
-
-Segment* new_segment(int id) {
-    Segment* sg = init_segment(id); 
-    for (int i = 0; i < N; i++){
-        /*
-        Cell c;
-        c.elem.store(uptickE, std::memory_order_release);
-        c.push = uptickPush;
-        c.pop = uptickPop;
-        sg->cells[i] = init_cell(); 
-        sg->cells[i] = c; 
-        */
-        sg->cells[i] = (Cell*) malloc(sizeof(Cell));
-        sg->cells[i]->elem.store(uptickE, std::memory_order_release);
-        sg->cells[i]->push = uptickPush;
-        sg->cells[i]->pop = uptickPop;
-    }   
-    return sg; 
-}
-
 void stack_init(){
     s = (Stack*) malloc(sizeof *s);
     Segment* top = new_segment(0);
@@ -85,6 +39,7 @@ void stack_init(){
     s->T = 1;
     pc = 1;
 }
+
 
 Cell* find_cell(Segment **sp, int cell_id){
     Segment* sg = *sp;
@@ -332,9 +287,9 @@ void help_pop(Handle* h, Handle* helpee){
 			return;
 		}
 		while (i >= 0){
-			Cell * c = sp->cells[i];
+			Cell* c = sp->cells[i];
 			int cid = sp->id*N + i;
-			Element v = help_push(h,c,cid);
+			Element v = help_push(h, c, cid);
 			if (!equal_elements(v,tickE) && (c->pop.compare_exchange_strong(uptickPop,r,std::memory_order_release, std::memory_order_relaxed) || c->pop == r)){
 				State wr = {0,cid};
 				r->state.compare_exchange_strong(s, wr, std::memory_order_release, std::memory_order_relaxed);
@@ -452,6 +407,7 @@ Element pop(Handle * h){
           }          
           */ 
           alloc_peers(h);
+          //alloc_poppeer(h);
 		  return v;
 }
 
