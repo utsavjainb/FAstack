@@ -9,7 +9,7 @@
 //#define N 10 
 //#define MAX_FAILURES 10 
 int NUM_THREADS = 10;
-int N = 10;
+int N = 4;
 int MAX_FAILURES = 10;
 
 PushReq* uptickPush;
@@ -55,22 +55,6 @@ Segment* init_segment(int id){
 	return sg;
 }
 
-    /*
-Cell init_cell() {
-	Cell c;
-	Element e;
-	c.elem = e;
-	c.push = new PushReq();
-	c.pop = new PopReq();
-	c.push = new PushReq();
-	c.pop = new PopReq();
-    //c.elem = uptickE;
-    c.elem.store(uptickE, std::memory_order_release);
-    c.push = uptickPush;
-    c.pop = uptickPop;
-	return c;
-}
-    */
 
 Segment* new_segment(int id) {
     Segment* sg = init_segment(id); 
@@ -100,7 +84,6 @@ void stack_init(){
     s->top.store(top,std::memory_order_relaxed);
     s->T = 1;
     pc = 1;
-	//pc.store(64,std::memory_order_acquire);
 }
 
 Cell* find_cell(Segment **sp, int cell_id){
@@ -114,7 +97,8 @@ Cell* find_cell(Segment **sp, int cell_id){
                 Segment* tmp = new_segment(i+2);
                 tmp->prev = next;
                 Segment* snull = NULL;
-                if (!std::atomic_compare_exchange_strong_explicit(&next->next, &snull, tmp, std::memory_order_release, std::memory_order_relaxed)){
+                //if (!std::atomic_compare_exchange_strong_explicit(&next->next, &snull, tmp, std::memory_order_release, std::memory_order_relaxed)){
+                if (!next->next.compare_exchange_strong(snull, tmp, std::memory_order_release, std::memory_order_relaxed)){
                     free(tmp);
                 }   
             }   
@@ -125,7 +109,6 @@ Cell* find_cell(Segment **sp, int cell_id){
         sg = next;
     }   
     *sp = sg; 
-    //return &sg->cells[cell_id % N]; 
     return sg->cells[cell_id % N]; 
 }
 
@@ -133,7 +116,6 @@ void cleanup(Handle *h) {
     Segment *prev = NULL;
     //for(Segment *cur = h->free_list.load(); cur != NULL; cur = cur->next.load()) {
     Segment *cur = h->free_list.load();
-    //for(Segment *cur = h->free_list.load(); cur != NULL; cur = cur->next.load()) {
     while(cur != NULL) { 
         bool freemark = true;
         for(Handle* ph = h->push.peer; ph != NULL; ph = ph->next) {
@@ -232,7 +214,7 @@ Element help_push(Handle *h, Cell* c, int i) {
             h->push.peer = p->next;
             p = h->push.peer;
             r = &p->push.req;
-            s = r->state;
+            s = r->state.load(std::memory_order_acquire);
         }
         
         if (s.pending && s.id <= i) {
@@ -329,7 +311,7 @@ void push(Handle* h, Element x) {
     if(!flag) {
         wf_push(h, x, i);
     }
-    std::cout << "pushed Element " << &x << ": " << x.e << std::endl;
+    //std::cout << "pushed Element " << &x << ": " << x.e << std::endl;
     //h->time_stamp = get_timestamp(tick);
     h->time_stamp = tickTime;
     h->top = NULL;
@@ -422,7 +404,7 @@ Element pop(Handle * h){
 				goto FLAG1;
 			}
 			int i = idx % N;
-			Cell * c = sp->cells[i];
+			Cell* c = sp->cells[i];
 			int offset = c->offset.fetch_add(1, std::memory_order_acquire);
 			idx -= offset;
 			if (idx < 1){
@@ -461,12 +443,14 @@ Element pop(Handle * h){
 		  }
 	FLAG3:h->time_stamp = tickTime;
 		  h->top = NULL;
+          /* 
           if (v.e != -3) {
-              std::cout << "Popped:  " << v.e << std::endl;
+              //std::cout << "Popped:  " << v.e << std::endl;
           } else {
-              std::cout << "Stack is empty: nothing to pop" << std::endl;
+              //std::cout << "Stack is empty: nothing to pop" << std::endl;
 
           }          
+          */ 
           alloc_peers(h);
 		  return v;
 }

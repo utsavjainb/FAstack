@@ -47,7 +47,7 @@ struct Segment {
     std::atomic<Segment*> next;
     std::atomic<Segment*> real_next; 
     std::atomic<Segment*> free_next;
-    Cell* cells[10];
+    Cell* cells[4];
 };
 
 /*

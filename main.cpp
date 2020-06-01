@@ -5,6 +5,8 @@
 #include "FAstack.h"
 #include <ctime>                                                                                                                    
 
+
+
 int main() {
     //inits
     uptickPush = (PushReq*) malloc(sizeof *uptickPush);
@@ -27,29 +29,15 @@ int main() {
     Handle* hr = new Handle();
     alloc_peers(hr);
 
-    std::vector<Element> pushElems;
-    for(int i = 0;i < 5; i++) {
-        pushElems.push_back(Element{i});
-        //std::cout << pushElems.at(i) << std::endl;
+    std::vector<Element> popElems;
+    for(int i = 1; i <= 1000; i++) {
+        push(hr, Element{i}); 
     }
- 
-    Element t1 = {1};
-    Element t2 = {2};
-    Element t3 = {3};
-    Element t4 = {4};
-    Element t5 = {5};
 
-     
-    push(hr, t1);
-    push(hr, t2);
-    push(hr, t3);
-    push(hr, t4);
-    push(hr, t5);
-    Element t6 = pop(hr);
-    Element t7 = pop(hr);
-    Element t8 = pop(hr);
-    Element t9 = pop(hr);
-    Element t10 = pop(hr);
-    Element t11 = pop(hr);
+    Element popped; 
+
+    for(int i = 1; i <= 1000; i++) {
+        popped = pop(hr);
+    }
 
 }
