@@ -172,6 +172,7 @@ class Handle{
         time_stamp = 64;    
         top = new_segment(1);
         sp = new_segment(2);
+        //free_list.store(new_segment(3), std::memory_order_relaxed);
     }
 }; 
 

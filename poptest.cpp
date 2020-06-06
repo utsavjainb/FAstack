@@ -9,19 +9,18 @@
 #include <chrono>
 
 
-#define NUMELEMS 100
-#define NUMTHREADS 4 
-
 void* push_thread(void* arg) {
     int thID = (long) arg;
     Handle* hr = new Handle();
     alloc_peers(hr);
+    std::cout << thID << std::endl;
 
     std::vector<Element> popElems;
     //std::cout << "pushing.. " << std::endl;
     for(int i = 1; i <= NUMELEMS; i++) {
-        push(hr, Element{i}); 
-        std::cout << "Thread " << thID << " pushed " << i << std::endl;
+        push(hr, Element{i*thID}); 
+        //push(handles[thID], Element{i*thID}); 
+        //std::cout << "Thread " << thID << " pushed " << i << std::endl;
         //sleep(0.3);
     }
 }
@@ -31,17 +30,35 @@ void* pop_thread(void* arg) {
     Handle* hr = new Handle();
     alloc_peers(hr);
 
+    std::cout << thID << std::endl;
     Element popped; 
     //std::cout << "popping.. " << std::endl;
     for(int i = 1; i <= NUMELEMS; i++) {
         popped = pop(hr);
+        //popped = pop(handles[thID]);
         //std::cout << "Thread " << thID << " popped " << i << std::endl;
     }
     //std::cout << "done!" << std::endl;
 }
 
+/*
+void init_handles(){
+    for (int i = 0; i < NUMTHREADS; i++) {
+        handles[i] = new Handle(); 
+        alloc_peers(handles[i]);
+        handles
+        if(i > 0) { 
+            handles[i-1]->next = handles[i]; 
+        }
+    }
+    handles[i]->next = NULL;
+}
+*/
+
 int main() {
     //inits
+    //handles *Handle[NUMTHREADS];
+
     uptickPush = (PushReq*) malloc(sizeof *uptickPush);
     tickPush = (PushReq*) malloc(sizeof *tickPush);
     uptickPop = (PopReq*) malloc(sizeof *uptickPop);
@@ -85,6 +102,7 @@ int main() {
 
 
     std::cout << "DONE PUSH" << std::endl;
+    //sleep(2);
 
     auto start_time = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < NUMTHREADS; i++) {

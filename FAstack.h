@@ -7,8 +7,7 @@
 
 #define MAX_FAILURES 100 
 #define NUMELEMS 1000
-#define NUMTHREADS 24 
-
+#define NUMTHREADS 4 
 
 Stack* s;
 std::atomic<int> pc; 
