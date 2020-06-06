@@ -1,6 +1,7 @@
 #include <atomic>
 
-#define N 4 
+#define N 10 
+//#define MAX_FAILURES 0 
 //#define MAX_FAILURES 10 
 //int N = 10;
 

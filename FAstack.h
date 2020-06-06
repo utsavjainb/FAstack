@@ -5,12 +5,9 @@
 #include "FAstack_structs.h"
 #include <ctime>                                                                                                                    
 
-//#define NUM_THREADS 10 
-//#define N 10 
-//#define MAX_FAILURES 10 
-int NUM_THREADS = 10;
-int MAX_FAILURES = 10;
-
+#define MAX_FAILURES 100 
+#define NUMELEMS 1000
+#define NUMTHREADS 24 
 
 
 Stack* s;
@@ -108,7 +105,7 @@ void remove(Handle *h , Segment *sp) {
         next = sp->next;
     }
     Segment* rnext;
-    while(i++ < NUM_THREADS && next->retired) {
+    while(i++ < NUMTHREADS && next->retired) {
         rnext = next->real_next.load(std::memory_order_acquire);
         if( rnext == NULL) {
             next = next->next;
@@ -120,7 +117,7 @@ void remove(Handle *h , Segment *sp) {
     Segment* prev = sp->prev.load(std::memory_order_acquire);
     Segment* nprev;
     Segment* pnext; 
-    while(i++ < NUM_THREADS && prev != NULL && prev->retired) {
+    while(i++ < NUMTHREADS && prev != NULL && prev->retired) {
         prev = prev->prev;
     }
     nprev = next->prev;
@@ -266,8 +263,6 @@ void push(Handle* h, Element x) {
     if(!flag) {
         wf_push(h, x, i);
     }
-    //std::cout << "pushed Element " << &x << ": " << x.e << std::endl;
-    //h->time_stamp = get_timestamp(tick);
     h->time_stamp = tickTime;
     h->top = NULL;
 }

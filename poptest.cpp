@@ -9,8 +9,8 @@
 #include <chrono>
 
 
-#define NUMELEMS 1000
-#define NUMTHREADS 2 
+#define NUMELEMS 100
+#define NUMTHREADS 4 
 
 void* push_thread(void* arg) {
     int thID = (long) arg;
@@ -21,7 +21,7 @@ void* push_thread(void* arg) {
     //std::cout << "pushing.. " << std::endl;
     for(int i = 1; i <= NUMELEMS; i++) {
         push(hr, Element{i}); 
-        //std::cout << "Thread " << thID << " pushed " << i << std::endl;
+        std::cout << "Thread " << thID << " pushed " << i << std::endl;
         //sleep(0.3);
     }
 }
@@ -63,7 +63,6 @@ int main() {
     pthread_t  pushThreads[NUMTHREADS];
     pthread_t  popThreads[NUMTHREADS];
     
-    auto start_time = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < NUMTHREADS; i++) {
         rc = pthread_create(&pushThreads[i], NULL, push_thread, (void*)i);
         if (rc) {
@@ -73,6 +72,21 @@ int main() {
         }   
     }   
 
+
+    
+    for (int i = 0; i < NUMTHREADS; i++) {
+        rc = pthread_join(pushThreads[i], NULL);
+        if (rc) {
+            printf("ERROR,  unable to create thread ");
+            std::cout << rc << std::endl;
+            exit(-1);
+        }   
+    }   
+
+
+    std::cout << "DONE PUSH" << std::endl;
+
+    auto start_time = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < NUMTHREADS; i++) {
         rc = pthread_create(&popThreads[i], NULL, pop_thread, (void*)i);
         if (rc) {
@@ -82,16 +96,9 @@ int main() {
         }   
     }   
 
-    
     for (int i = 0; i < NUMTHREADS; i++) {
-        rc = pthread_join(pushThreads[i], NULL);
-        rc2 = pthread_join(popThreads[i], NULL);
+        rc = pthread_join(popThreads[i], NULL);
         if (rc) {
-            printf("ERROR,  unable to create thread ");
-            std::cout << rc << std::endl;
-            exit(-1);
-        }   
-        if (rc2) {
             printf("ERROR,  unable to create thread ");
             std::cout << rc << std::endl;
             exit(-1);
@@ -101,7 +108,6 @@ int main() {
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time-start_time);
     double seconds = duration.count()/1000000.0;
     printf("Time: %e s\n", seconds);
-
 
 
     return 0;
