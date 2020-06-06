@@ -6,8 +6,8 @@
 #include <ctime>                                                                                                                    
 
 #define MAX_FAILURES 100 
-#define NUMELEMS 1000
-#define NUMTHREADS 4 
+#define NUMELEMS 10000
+#define NUMTHREADS 16 
 
 Stack* s;
 std::atomic<int> pc; 
@@ -267,13 +267,14 @@ void push(Handle* h, Element x) {
 }
 
 void help_pop(Handle* h, Handle* helpee){
+    helpee->pop.req;
 	PopReq* r = &helpee->pop.req;
 	State s = r->state.load(std::memory_order_acquire);
 	if (!s.pending) {
 		return;
 	}
 	int idx = r->idx;
-	Segment * sp = helpee->sp;
+	Segment *sp = helpee->sp;
 	h->time_stamp = helpee->time_stamp;
 	//TODO: Look into this for loop since it was worded incorrectly.
 	for (int i = idx % N; sp != NULL && i != N-1; sp = sp->prev){
@@ -400,7 +401,7 @@ Element pop(Handle * h){
 
           }          
           */ 
-          alloc_peers(h);
+          //alloc_peers(h);
           //alloc_poppeer(h);
 		  return v;
 }

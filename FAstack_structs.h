@@ -16,6 +16,7 @@ struct State {
 };
     
 
+/*
 struct PushReq {
     Element elem;
 	std::atomic<State> state;
@@ -24,6 +25,21 @@ struct PushReq {
 struct PopReq {
     int idx{64};
 	std::atomic<State> state;
+};
+*/
+
+class PushReq {
+  public:
+    Element elem;
+	std::atomic<State> state;
+    PushReq() {}
+};
+
+class PopReq {
+  public:
+    int idx{64};
+	std::atomic<State> state;
+    PopReq() {}
 };
 
 PushReq* uptickPush;
@@ -172,6 +188,8 @@ class Handle{
         time_stamp = 64;    
         top = new_segment(1);
         sp = new_segment(2);
+        push.peer = this; 
+        pop.peer = this; 
         //free_list.store(new_segment(3), std::memory_order_relaxed);
     }
 }; 
