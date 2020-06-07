@@ -14,14 +14,14 @@ void* push_thread(void* arg) {
     int thID = (long) arg;
     //Handle* hr = new Handle();
     //alloc_peers(hr);
-    std::cout << thID << std::endl;
+    //std::cout << thID << std::endl;
 
     std::vector<Element> popElems;
     //std::cout << "pushing.. " << std::endl;
     for(int i = 1; i <= NUMELEMS; i++) {
         //push(hr, Element{i*thID}); 
         push(handles[thID], Element{i*thID}); 
-        std::cout << "Thread " << thID << " pushed " << i << std::endl;
+        //std::cout << "Thread " << thID << " pushed " << i << std::endl;
         //sleep(0.3);
     }
 }
@@ -31,13 +31,13 @@ void* pop_thread(void* arg) {
     //Handle* hr = new Handle();
     //alloc_peers(hr);
 
-    std::cout << thID << std::endl;
+    //std::cout << thID << std::endl;
     Element popped; 
     //std::cout << "popping.. " << std::endl;
     for(int i = 1; i <= NUMELEMS; i++) {
         //popped = pop(hr);
         popped = pop(handles[thID]);
-        std::cout << "Thread " << thID << " popped " << i << std::endl;
+        //std::cout << "Thread " << thID << " popped " << i << std::endl;
     }
     //std::cout << "done!" << std::endl;
 }
@@ -45,14 +45,17 @@ void* pop_thread(void* arg) {
 void init_handles(){
     for (int i = 0; i < NUMTHREADS; i++) {
         handles[i] = new Handle(); 
-        //alloc_peers(handles[i]);
         if(i > 0) { 
             handles[i-1]->next = handles[i]; 
         }
     }
+
     if(NUMTHREADS > 1) { 
         handles[NUMTHREADS-1]->next = handles[0];
+        //handles[NUMTHREADS-1]->next = NULL;
     }
+    //handles[NUMTHREADS-1]->push.peer = NULL;
+    //handles[NUMTHREADS-1]->pop.peer = NULL;
 }
 
 int main() {
@@ -107,7 +110,7 @@ int main() {
 
 
     std::cout << "DONE PUSH" << std::endl;
-    //sleep(2);
+    sleep(2);
 
     auto start_time = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < NUMTHREADS; i++) {

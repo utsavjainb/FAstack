@@ -6,12 +6,11 @@
 #include <ctime>                                                                                                                    
 
 #define MAX_FAILURES 100 
-#define NUMELEMS 10000
-#define NUMTHREADS 16 
+#define NUMELEMS 1000
+#define NUMTHREADS 24 
 
 Stack* s;
 std::atomic<int> pc; 
-
 
 int get_timestamp(){
     return std::time(0);    
@@ -306,8 +305,8 @@ void help_pop(Handle* h, Handle* helpee){
 	}
 }
 
-Element wf_pop(Handle * h, int cid){
-	PopReq * r = &h->pop.req;
+Element wf_pop(Handle* h, int cid){
+	PopReq* r = &h->pop.req;
 	r->idx = cid;
 	r ->state = {1, pc.fetch_add(1, std::memory_order_relaxed)};
 	help_pop(h,h);
