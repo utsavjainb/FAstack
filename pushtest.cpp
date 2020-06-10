@@ -8,42 +8,24 @@
 #include <chrono>
 #include <ctime>                                                                                                                    
 
-
-
 void* push_thread(void* arg) {
     int thID = (long) arg;
-    Handle* hr = new Handle();
-    alloc_peers(hr);
 
-    std::vector<Element> popElems;
-    //std::cout << "pushing.. " << std::endl;
     for(int i = 1; i <= NUMELEMS; i++) {
-        push(hr, Element{i}); 
-        //std::cout << "Thread " << thID << " pushed " << i << std::endl;
-        //sleep(0.3);
+        push(handles[thID], Element{i*thID}); 
     }
 }
 
-void* pop_thread(void* arg) {
-    int thID = (long) arg;
-    Handle* hr = new Handle();
-    alloc_peers(hr);
-
-    Element popped; 
-    std::cout << "popping.. " << std::endl;
-    for(int i = 1; i <= NUMELEMS; i++) {
-        popped = pop(hr);
-        std::cout << "Thread " << thID << " popped " << i << std::endl;
-    }
-    std::cout << "done!" << std::endl;
-}
 
 int main() {
     //inits
-    uptickPush = (PushReq*) malloc(sizeof *uptickPush);
-    tickPush = (PushReq*) malloc(sizeof *tickPush);
-    uptickPop = (PopReq*) malloc(sizeof *uptickPop);
-    tickPop = (PopReq*) malloc(sizeof *tickPop);
+
+    init_handles();
+
+    uptickPush = new PushReq();
+    tickPush = new PushReq();
+    uptickPop = new PopReq();
+    tickPop = new PopReq();
 
     State utick = {1, -1};   
     State tick = {1, -1};   
